@@ -1,0 +1,16 @@
+load("@rules_swift//swift:swift.bzl", "swift_library", "swift_test")
+
+swift_library(
+    name = "FilenameMatcher",
+    srcs = glob(["Sources/**/*.swift"]),
+    module_name = "FilenameMatcher",
+    visibility = ["//visibility:public"],
+)
+
+swift_test(
+    name = "Tests",
+    srcs = glob(["Tests/**/*.swift"]),
+    module_name = "Tests",
+    visibility = ["//visibility:public"],
+    deps = [":FilenameMatcher"]
+)
