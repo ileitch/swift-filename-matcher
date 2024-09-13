@@ -142,6 +142,49 @@ final class FilenameMatcherTest: XCTestCase {
         }
     }
 
+    func testStars() {
+
+      assertMatch("A/B/C/f", "A/**/f")
+      assertMatch("A/B/f", "A/**/f")
+      assertMatch("A/f", "A/**/f")
+      assertMatch("AB/f", "A/**/f", false)
+      assertMatch("A/af", "A/**/f", false)
+
+      assertMatch("A/B/C/f", "A/**/**/f")
+      assertMatch("A/B/f", "A/**/**/f")
+      assertMatch("A/f", "A/**/**/f")
+      assertMatch("AB/f", "A/**/**/f", false)
+      assertMatch("A/af", "A/**/**/f", false)
+
+      assertMatch("A/b/f", "A/**/b/**/f")
+      assertMatch("A/c/b/f", "A/**/b/**/f")
+      assertMatch("A/b/c/f", "A/**/b/**/f")
+      assertMatch("A/c/b/c/f", "A/**/b/**/f")
+      assertMatch("A/c/b/c/af", "A/**/b/**/f", false)
+      assertMatch("A/f", "A/**/b/**/f", false)
+      assertMatch("b/f", "A/**/b/**/f", false)
+      assertMatch("A/bc/f", "A/**/b/**/f", false)
+
+      assertMatch("A/B/f", "A/**/**/**/**/f")
+      assertMatch("A/f", "A/**/**/**/**/f")
+      assertMatch("AB/f", "A/**/**/**/**/f", false)
+      assertMatch("A/af", "A/**/**/**/**/f", false)
+
+      assertMatch("A/B/C/f", "**/f")
+      assertMatch("A/B/f", "**/f")
+      assertMatch("A/f", "**/f")
+      assertMatch("AB/f", "**/f")
+      assertMatch("AB/fa", "**/f", false)
+      assertMatch("A/af", "**/f", false)
+
+      assertMatch("A/b/f", "A/**/b/f")
+      assertMatch("A/c/b/f", "A/**/b/f")
+      assertMatch("A/b/c/f", "A/**/b/f", false)
+      assertMatch("AB/b/f", "A/**/b/f", false)
+      assertMatch("A/b/af", "A/**/b/f", false)
+      assertMatch("A/a/f", "A/b/**/f", false)
+    }
+
     func testSepInCharSet() {
         assertMatch("/", #"[/]"#)
         assertMatch("\\", #"[\]"#)
@@ -203,7 +246,7 @@ final class FilenameMatcherTest: XCTestCase {
 
         // fancy translation to prevent exponential-time match failure
         let t = FilenameMatcher.translate("**a*a****a")
-        XCTAssertEqual(t, #"(?s:(?>.*?a)(?>.*?a).*a)\Z"#)
+        XCTAssertEqual(t, #"(?s:.*a.*a.*a)\Z"#)
 
         // and try pasting multiple translate results - it's an undocumented
         // feature that this works
@@ -246,6 +289,6 @@ final class FilenameMatcherTest: XCTestCase {
     private func assertMatch(_ filename: String, _ pattern: String, _ shouldMatch: Bool = true, _ caseSensitive: Bool = false, file: StaticString = #file, line: UInt = #line) {
         let matcher = FilenameMatcher(pattern: pattern, caseSensitive: caseSensitive)
         let result = matcher.match(filename: filename)
-        shouldMatch ? XCTAssertTrue(result, file: file, line: line) : XCTAssertFalse(result, file: file, line: line)
+        shouldMatch ? XCTAssertTrue(result, "\(filename) should match \(pattern)", file: file, line: line) : XCTAssertFalse(result, "\(filename) should not match \(pattern)", file: file, line: line)
     }
 }

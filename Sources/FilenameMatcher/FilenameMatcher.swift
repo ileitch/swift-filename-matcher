@@ -129,51 +129,40 @@ public struct FilenameMatcher {
 
         assert(patternIndexInt == pattern.count)
 
-        // Deal with stars.
-        var stringResult: [String] = []
-        var resultIndex = 0
+        var resultRegex = result
+          .map {
+              switch $0 {
+                  case .fixed(let value):
+                  return value
+              case .star:
+                  return ".*"
+              }
+          }
+          .joined()
 
-        // Fixed pieces at the start?
-        while resultIndex < result.count, result[resultIndex] != .star {
-            stringResult.append(result[resultIndex].value)
-            resultIndex += 1
-        }
+        let duplicatesRemoval: [String] = [
+            /// Replace consecutive `/.*/.*` with one `/.*`.
+            #"\/.*"#
+        ]
 
-        // Now deal with * fixed * fixed ...
-        // For an interior `* fixed` pairing, we want to do a minimal
-        // .*? match followed by `fixed`, with no possibility of backtracking.
-        // Atomic groups ("(?>...)") allow us to spell that directly.
-        // Note: people rely on the undocumented ability to join multiple
-        // translate() results together via "|" to build large regexps matching
-        // "one of many" shell patterns.
-        while resultIndex < result.count {
-            assert(result[resultIndex] == .star)
-            resultIndex += 1
-
-            if resultIndex == result.count {
-                stringResult.append(".*")
-                break
-            }
-
-            assert(result[resultIndex] != .star)
-            var fixed: [String] = []
-
-            while resultIndex < result.count, result[resultIndex] != .star {
-                fixed.append(result[resultIndex].value)
-                resultIndex += 1
-            }
-
-            let joinedFixed = fixed.joined(separator: "")
-
-            if resultIndex == result.count {
-                stringResult.append(".*")
-                stringResult.append(joinedFixed)
-            } else {
-                stringResult.append("(?>.*?\(joinedFixed))")
+        for duplicate in duplicatesRemoval {
+            while resultRegex.contains(duplicate + duplicate) {
+                resultRegex = resultRegex.replacingOccurrences(of: duplicate + duplicate, with: duplicate)
             }
         }
-        assert(resultIndex == result.count)
-        return #"(?s:\#(stringResult.joined()))\Z"#
+
+        let regexReplacements: [(from: String, to: String)] = [
+            /// Replace  `/.*/` with optional folder `/(.*/)?` so nested folders become optional.
+            (from: #"\/.*\/"#, to: #"\/(.*\/)?"#)
+        ]
+
+        for (from, to) in regexReplacements {
+            while resultRegex.contains(from) {
+                resultRegex = resultRegex.replacingOccurrences(of: from, with: to)
+            }
+        }
+
+        return #"(?s:\#(resultRegex))\Z"#
     }
 }
 
