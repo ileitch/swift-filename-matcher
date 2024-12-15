@@ -2,11 +2,25 @@
 
 ##### Breaking
 
-- 'globstar' behaviour is enabled by default.
+- None.
 
 ##### Enhancements
 
-- Added support for Bash 'globstar' behaviour.
+- None.
+
+##### Bug Fixes
+
+- None.
+
+## 2.0.0 (2024-12-15)
+
+##### Breaking
+
+- The `.globstar` option is enabled by default.
+
+##### Enhancements
+
+- Added `.globstar` option to match Bash 'globstar' behaviour.
 
 ##### Bug Fixes
 
