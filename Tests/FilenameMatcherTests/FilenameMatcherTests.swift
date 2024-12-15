@@ -27,23 +27,38 @@ final class FilenameMatcherTest: XCTestCase {
         assertMatch("\n", "*")
     }
 
-    func testMatchCaseSensitivity() {
-        assertMatch("abc", "abc", true, true)
-        assertMatch("AbC", "abc", false, true)
-        assertMatch("abc", "AbC", false, true)
-        assertMatch("AbC", "AbC", true, true)
+    func testGlobstar() {
+        assertMatch("a/File", "a/**/File", options: [.globstar])
+        assertMatch("a/b/File", "a/**/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "a/**/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "**/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "**/**/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "a/b/**/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "a/b/**/e/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "a/b/**/*/File", options: [.globstar])
+        assertMatch("a/b/c/d/e/File", "a/b/**/**/File", options: [.globstar])
 
-        assertMatch("abc", "abc", true, false)
-        assertMatch("AbC", "abc", true, false)
-        assertMatch("abc", "AbC", true, false)
-        assertMatch("AbC", "AbC", true, false)
+        assertMatch("a/File", "a/*/Bar", false, options: [.globstar])
+        assertMatch("a/File", "a/***/Bar", false, options: [.globstar])
+    }
+
+    func testMatchCaseSensitivity() {
+        assertMatch("abc", "abc", true, options: [.caseSensitive])
+        assertMatch("AbC", "abc", false, options: [.caseSensitive])
+        assertMatch("abc", "AbC", false, options: [.caseSensitive])
+        assertMatch("AbC", "AbC", true, options: [.caseSensitive])
+
+        assertMatch("abc", "abc", true)
+        assertMatch("AbC", "abc", true)
+        assertMatch("abc", "AbC", true)
+        assertMatch("AbC", "AbC", true)
     }
 
     func testSep() {
-        assertMatch("usr/bin", "usr/bin", true, true)
-        assertMatch("usr\\bin", "usr/bin", false, true)
-        assertMatch("usr/bin", "usr\\bin", false, true)
-        assertMatch("usr\\bin", "usr\\bin", true, true)
+        assertMatch("usr/bin", "usr/bin", true, options: [.caseSensitive])
+        assertMatch("usr\\bin", "usr/bin", false, options: [.caseSensitive])
+        assertMatch("usr/bin", "usr\\bin", false, options: [.caseSensitive])
+        assertMatch("usr\\bin", "usr\\bin", true, options: [.caseSensitive])
     }
 
     func testCharSet() {
@@ -56,13 +71,13 @@ final class FilenameMatcherTest: XCTestCase {
 
         // Case insensitive.
         for c in characters {
-            assertMatch(c, "[AZ]", "az".contains(c), false)
-            assertMatch(c, "[!AZ]", !"az".contains(c), false)
+            assertMatch(c, "[AZ]", "az".contains(c))
+            assertMatch(c, "[!AZ]", !"az".contains(c))
         }
 
         for c in uppercaseCharacters {
-            assertMatch(c, "[az]", "AZ".contains(c), false)
-            assertMatch(c, "[!az]", !"AZ".contains(c), false)
+            assertMatch(c, "[az]", "AZ".contains(c))
+            assertMatch(c, "[!az]", !"AZ".contains(c))
         }
 
         // Repeated same character.
@@ -95,13 +110,13 @@ final class FilenameMatcherTest: XCTestCase {
 
         // Case insensitive.
         for c in characters {
-            assertMatch(c, "[B-D]", "bcd".contains(c), false)
-            assertMatch(c, "[!B-D]", !"bcd".contains(c), false)
+            assertMatch(c, "[B-D]", "bcd".contains(c))
+            assertMatch(c, "[!B-D]", !"bcd".contains(c))
         }
 
         for c in uppercaseCharacters {
-            assertMatch(c, "[b-d]", "BCD".contains(c), false)
-            assertMatch(c, "[!b-d]", !"BCD".contains(c), false)
+            assertMatch(c, "[b-d]", "BCD".contains(c))
+            assertMatch(c, "[!b-d]", !"BCD".contains(c))
         }
 
         // Upper bound == lower bound.
@@ -243,8 +258,8 @@ final class FilenameMatcherTest: XCTestCase {
         return expr.numberOfMatches(in: str, range: range) > 0
     }
 
-    private func assertMatch(_ filename: String, _ pattern: String, _ shouldMatch: Bool = true, _ caseSensitive: Bool = false, file: StaticString = #file, line: UInt = #line) {
-        let matcher = FilenameMatcher(pattern: pattern, caseSensitive: caseSensitive)
+    private func assertMatch(_ filename: String, _ pattern: String, _ shouldMatch: Bool = true, options: FilenameMatcherOptions = [], file: StaticString = #file, line: UInt = #line) {
+        let matcher = FilenameMatcher(pattern: pattern, options: options)
         let result = matcher.match(filename: filename)
         shouldMatch ? XCTAssertTrue(result, file: file, line: line) : XCTAssertFalse(result, file: file, line: line)
     }

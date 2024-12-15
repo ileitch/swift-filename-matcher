@@ -4,12 +4,12 @@ import Foundation
 public struct FilenameMatcher {
     private let regex: NSRegularExpression
 
-    public init(pattern: String, caseSensitive: Bool = false) {
-        // \A is necessary to match the behavior or Python's re.match, which is what fnmatch uses
+    public init(pattern: String, options: FilenameMatcherOptions = .defaults) {
+        // \A is necessary to match the behaviour or Python's re.match, which is what fnmatch uses
         // internally.
         regex = try! NSRegularExpression(
-            pattern: "\\A\(Self.translate(pattern))",
-            options: caseSensitive ? [] : .caseInsensitive
+            pattern: "\\A\(Self.translate(pattern, options: options))",
+            options: options.contains(.caseSensitive) ? [] : .caseInsensitive
         )
     }
 
@@ -20,7 +20,7 @@ public struct FilenameMatcher {
     }
 
     /// Translate the given pattern into a regular expression.
-    public static func translate(_ pattern: String) -> String {
+    public static func translate(_ pattern: String, options: FilenameMatcherOptions = .defaults) -> String {
         var result: [ResultPart] = []
         var patternIndexInt = 0
 
@@ -32,8 +32,11 @@ public struct FilenameMatcher {
 
             if char == "*" {
                 // compress consecutive `*` into one
-                if result.isEmpty || result.last != .star {
-                    result.append(.star)
+                if result.isEmpty || !(result.last?.isStar ?? false) {
+                    result.append(.star(1))
+                } else if case let .star(count) = result.last {
+                    // increment the count of consecutive stars
+                    result[result.endIndex - 1] = .star(count + 1)
                 }
             } else if char == "?" {
                 result.append(.fixed("."))
@@ -122,6 +125,10 @@ public struct FilenameMatcher {
                         result.append(.fixed("[\(stuff)]"))
                     }
                 }
+            } else if options.contains(.globstar), char == "/", case let .star(starCount) = result.last, starCount == 2 {
+                // Bash 'globstar' behaviour where '**/' optionally matches any number of nested directories,
+                // e.g. 'a/**/c' matches 'a/c' and 'a/b/c'.
+                result[result.endIndex - 1] = .fixed("(.*/)?")
             } else {
                 result.append(.fixed(NSRegularExpression.escapedPattern(for: String(char))))
             }
@@ -134,7 +141,7 @@ public struct FilenameMatcher {
         var resultIndex = 0
 
         // Fixed pieces at the start?
-        while resultIndex < result.count, result[resultIndex] != .star {
+        while resultIndex < result.count, !result[resultIndex].isStar {
             stringResult.append(result[resultIndex].value)
             resultIndex += 1
         }
@@ -147,7 +154,7 @@ public struct FilenameMatcher {
         // translate() results together via "|" to build large regexps matching
         // "one of many" shell patterns.
         while resultIndex < result.count {
-            assert(result[resultIndex] == .star)
+            assert(result[resultIndex].isStar)
             resultIndex += 1
 
             if resultIndex == result.count {
@@ -155,10 +162,10 @@ public struct FilenameMatcher {
                 break
             }
 
-            assert(result[resultIndex] != .star)
+            assert(!result[resultIndex].isStar)
             var fixed: [String] = []
 
-            while resultIndex < result.count, result[resultIndex] != .star {
+            while resultIndex < result.count, !result[resultIndex].isStar {
                 fixed.append(result[resultIndex].value)
                 resultIndex += 1
             }
@@ -178,7 +185,7 @@ public struct FilenameMatcher {
 }
 
 private enum ResultPart: Equatable {
-    case star
+    case star(Int)
     case fixed(String)
 
     var value: String {
@@ -187,6 +194,15 @@ private enum ResultPart: Equatable {
             return "*"
         case let .fixed(value):
             return value
+        }
+    }
+
+    var isStar: Bool {
+        switch self {
+        case .star:
+            return true
+        default:
+            return false
         }
     }
 }
