@@ -12,6 +12,20 @@
 
 - None.
 
+## 2.0.1 (2025-06-14)
+
+##### Breaking
+
+- None.
+
+##### Enhancements
+
+- Support rules_swift 3.0.
+
+##### Bug Fixes
+
+- None.
+
 ## 2.0.0 (2024-12-15)
 
 ##### Breaking
